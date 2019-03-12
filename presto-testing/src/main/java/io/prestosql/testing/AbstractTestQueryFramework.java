@@ -36,7 +36,6 @@ import io.prestosql.sql.planner.PlanFragmenter;
 import io.prestosql.sql.planner.PlanOptimizers;
 import io.prestosql.sql.planner.RuleStatsRecorder;
 import io.prestosql.sql.planner.TypeAnalyzer;
-import io.prestosql.sql.planner.optimizations.PlanOptimizer;
 import io.prestosql.sql.query.QueryAssertions.QueryAssert;
 import io.prestosql.sql.tree.ExplainType;
 import io.prestosql.testing.TestingAccessControlManager.TestingPrivilege;
@@ -365,7 +364,7 @@ public abstract class AbstractTestQueryFramework
         boolean forceSingleNode = queryRunner.getNodeCount() == 1;
         TaskCountEstimator taskCountEstimator = new TaskCountEstimator(queryRunner::getNodeCount);
         CostCalculator costCalculator = new CostCalculatorUsingExchanges(taskCountEstimator);
-        List<PlanOptimizer> optimizers = new PlanOptimizers(
+        PlanOptimizers optimizers = new PlanOptimizers(
                 metadata,
                 new TypeAnalyzer(sqlParser, metadata),
                 new TaskManagerConfig(),
@@ -378,7 +377,7 @@ public abstract class AbstractTestQueryFramework
                 new CostCalculatorWithEstimatedExchanges(costCalculator, taskCountEstimator),
                 new CostComparator(featuresConfig),
                 taskCountEstimator,
-                new RuleStatsRecorder()).get();
+                new RuleStatsRecorder());
         return new QueryExplainer(
                 optimizers,
                 new PlanFragmenter(metadata, queryRunner.getNodePartitioningManager(), new QueryManagerConfig()),
