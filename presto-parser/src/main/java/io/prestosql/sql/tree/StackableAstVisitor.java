@@ -46,7 +46,7 @@ public class StackableAstVisitor<R, C>
             return context;
         }
 
-        private void pop()
+        void pop()
         {
             stack.pop();
         }

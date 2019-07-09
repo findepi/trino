@@ -1047,7 +1047,7 @@ public final class SqlFormatter
         }
 
         @Override
-        public Void visitSetSession(SetSession node, Integer context)
+        protected Void visitSetSession(SetSession node, Integer context)
         {
             builder.append("SET SESSION ")
                     .append(node.getName())
@@ -1058,7 +1058,7 @@ public final class SqlFormatter
         }
 
         @Override
-        public Void visitResetSession(ResetSession node, Integer context)
+        protected Void visitResetSession(ResetSession node, Integer context)
         {
             builder.append("RESET SESSION ")
                     .append(node.getName());
@@ -1235,7 +1235,7 @@ public final class SqlFormatter
         }
 
         @Override
-        public Void visitGrant(Grant node, Integer indent)
+        protected Void visitGrant(Grant node, Integer indent)
         {
             builder.append("GRANT ");
 
@@ -1262,7 +1262,7 @@ public final class SqlFormatter
         }
 
         @Override
-        public Void visitRevoke(Revoke node, Integer indent)
+        protected Void visitRevoke(Revoke node, Integer indent)
         {
             builder.append("REVOKE ");
 
@@ -1290,7 +1290,7 @@ public final class SqlFormatter
         }
 
         @Override
-        public Void visitShowGrants(ShowGrants node, Integer indent)
+        protected Void visitShowGrants(ShowGrants node, Integer indent)
         {
             builder.append("SHOW GRANTS ");
 
@@ -1337,7 +1337,7 @@ public final class SqlFormatter
         }
 
         @Override
-        public Void visitSetPath(SetPath node, Integer indent)
+        protected Void visitSetPath(SetPath node, Integer indent)
         {
             builder.append("SET PATH ");
             builder.append(Joiner.on(", ").join(node.getPathSpecification().getPath()));

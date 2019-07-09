@@ -113,19 +113,19 @@ public final class ExpressionFormatter
         return new Formatter(parameters).process(expression, null);
     }
 
-    public static String formatQualifiedName(QualifiedName name)
+    private static String formatQualifiedName(QualifiedName name)
     {
         return name.getParts().stream()
                 .map(ExpressionFormatter::formatIdentifier)
                 .collect(joining("."));
     }
 
-    public static String formatIdentifier(String s)
+    private static String formatIdentifier(String s)
     {
         return '"' + s.replace("\"", "\"\"") + '"';
     }
 
-    public static class Formatter
+    private static class Formatter
             extends AstVisitor<String, Void>
     {
         private final Optional<List<Expression>> parameters;
@@ -356,7 +356,7 @@ public final class ExpressionFormatter
         }
 
         @Override
-        public String visitFieldReference(FieldReference node, Void context)
+        protected String visitFieldReference(FieldReference node, Void context)
         {
             // add colon so this won't parse
             return ":input(" + node.getFieldIndex() + ")";
@@ -538,7 +538,7 @@ public final class ExpressionFormatter
         }
 
         @Override
-        public String visitCast(Cast node, Void context)
+        protected String visitCast(Cast node, Void context)
         {
             return (node.isSafe() ? "TRY_CAST" : "CAST") +
                     "(" + process(node.getExpression(), context) + " AS " + node.getType() + ")";
@@ -612,7 +612,7 @@ public final class ExpressionFormatter
         }
 
         @Override
-        public String visitWindow(Window node, Void context)
+        protected String visitWindow(Window node, Void context)
         {
             List<String> parts = new ArrayList<>();
 
@@ -630,7 +630,7 @@ public final class ExpressionFormatter
         }
 
         @Override
-        public String visitWindowFrame(WindowFrame node, Void context)
+        protected String visitWindowFrame(WindowFrame node, Void context)
         {
             StringBuilder builder = new StringBuilder();
 
@@ -650,7 +650,7 @@ public final class ExpressionFormatter
         }
 
         @Override
-        public String visitFrameBound(FrameBound node, Void context)
+        protected String visitFrameBound(FrameBound node, Void context)
         {
             switch (node.getType()) {
                 case UNBOUNDED_PRECEDING:
@@ -684,7 +684,7 @@ public final class ExpressionFormatter
         }
 
         @Override
-        public String visitGroupingOperation(GroupingOperation node, Void context)
+        protected String visitGroupingOperation(GroupingOperation node, Void context)
         {
             return "GROUPING (" + joinExpressions(node.getGroupingColumns()) + ")";
         }
@@ -735,7 +735,7 @@ public final class ExpressionFormatter
         return builder.toString();
     }
 
-    public static String formatOrderBy(OrderBy orderBy, Optional<List<Expression>> parameters)
+    static String formatOrderBy(OrderBy orderBy, Optional<List<Expression>> parameters)
     {
         return "ORDER BY " + formatSortItems(orderBy.getSortItems(), parameters);
     }
@@ -799,7 +799,7 @@ public final class ExpressionFormatter
                 .iterator()));
     }
 
-    public static Function<SortItem, String> sortItemFormatterFunction(Optional<List<Expression>> parameters)
+    private static Function<SortItem, String> sortItemFormatterFunction(Optional<List<Expression>> parameters)
     {
         return input -> {
             StringBuilder builder = new StringBuilder();
