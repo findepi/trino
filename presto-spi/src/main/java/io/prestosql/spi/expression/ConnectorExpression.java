@@ -31,5 +31,6 @@ public abstract class ConnectorExpression
         return type;
     }
 
+    @Override
     public abstract String toString();
 }

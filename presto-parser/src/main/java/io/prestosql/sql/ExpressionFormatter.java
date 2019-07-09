@@ -683,6 +683,7 @@ public final class ExpressionFormatter
                     .toString();
         }
 
+        @Override
         public String visitGroupingOperation(GroupingOperation node, Void context)
         {
             return "GROUPING (" + joinExpressions(node.getGroupingColumns()) + ")";

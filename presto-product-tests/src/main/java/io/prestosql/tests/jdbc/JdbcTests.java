@@ -82,6 +82,7 @@ public class JdbcTests
     private static class ImmutableAndMutableNationTable
             implements RequirementsProvider
     {
+        @Override
         public Requirement getRequirements(Configuration configuration)
         {
             return compose(immutableTable(NATION), mutableTable(NATION, TABLE_NAME, CREATED));

@@ -41,6 +41,7 @@ public class TestTpchDistributedQueries
         super(() -> TpchQueryRunnerBuilder.builder().build());
     }
 
+    @Override
     @Test
     public void testIOExplain()
     {
@@ -119,6 +120,7 @@ public class TestTpchDistributedQueries
         assertTrue(sampleSizeFound, "Table sample returned unexpected number of rows");
     }
 
+    @Override
     public void testShowTables()
     {
         assertQuerySucceeds(createSession("sf1"), "SHOW TABLES");
