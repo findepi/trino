@@ -51,8 +51,8 @@ public class ThriftMetastoreStats
     private final ThriftMetastoreApiStats openTxn = new ThriftMetastoreApiStats();
     private final ThriftMetastoreApiStats commitTxn = new ThriftMetastoreApiStats();
     private final ThriftMetastoreApiStats rollbackTxn = new ThriftMetastoreApiStats();
-    private final ThriftMetastoreApiStats acquireLocks = new ThriftMetastoreApiStats();
-    private final ThriftMetastoreApiStats checkLocks = new ThriftMetastoreApiStats();
+    private final ThriftMetastoreApiStats acquireLock = new ThriftMetastoreApiStats();
+    private final ThriftMetastoreApiStats checkLock = new ThriftMetastoreApiStats();
     private final ThriftMetastoreApiStats validWriteIds = new ThriftMetastoreApiStats();
 
     @Managed
@@ -288,16 +288,16 @@ public class ThriftMetastoreStats
 
     @Managed
     @Nested
-    public ThriftMetastoreApiStats getAcquireLocks()
+    public ThriftMetastoreApiStats getAcquireLock()
     {
-        return acquireLocks;
+        return acquireLock;
     }
 
     @Managed
     @Nested
-    public ThriftMetastoreApiStats getCheckLocks()
+    public ThriftMetastoreApiStats getCheckLock()
     {
-        return checkLocks;
+        return checkLock;
     }
 
     @Managed

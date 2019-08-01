@@ -528,7 +528,7 @@ public final class HiveSessionProperties
         return session.getProperty(TEMPORARY_STAGING_DIRECTORY_PATH, String.class);
     }
 
-    public static Duration getHiveTxnHeartBeatInterval(ConnectorSession session)
+    public static Duration getHiveTransactionHeartbeatInterval(ConnectorSession session)
     {
         return session.getProperty(HIVE_TXN_HEARTBEAT_INTERVAL, Duration.class);
     }

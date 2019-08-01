@@ -16,6 +16,7 @@ package io.prestosql.plugin.hive.metastore;
 import io.prestosql.plugin.hive.HivePartition;
 import io.prestosql.plugin.hive.HiveType;
 import io.prestosql.plugin.hive.PartitionStatistics;
+import io.prestosql.spi.connector.SchemaTableName;
 import io.prestosql.spi.security.RoleGrant;
 import io.prestosql.spi.statistics.ColumnStatisticType;
 import io.prestosql.spi.type.Type;
@@ -127,12 +128,12 @@ public interface HiveMetastore
         throw new UnsupportedOperationException();
     }
 
-    default void acquireSharedReadLock(String user, String queryId, long txn, Set<HivePartition> partitions)
+    default void acquireSharedReadLock(String user, String queryId, long txn, List<SchemaTableName> fullTables, List<HivePartition> partitions)
     {
         throw new UnsupportedOperationException();
     }
 
-    default String getValidWriteIds(List<String> tableList, long currentTxn)
+    default String getValidWriteIds(List<SchemaTableName> tables, long currentTxn)
     {
         throw new UnsupportedOperationException();
     }
