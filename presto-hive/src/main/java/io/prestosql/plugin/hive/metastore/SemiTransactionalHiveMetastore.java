@@ -953,6 +953,7 @@ public class SemiTransactionalHiveMetastore
     public void beginQuery(ConnectorSession session, List<HiveTableHandle> tableHandles)
     {
         String queryId = session.getQueryId();
+        // TODO handle tables created/updated within current Presto transaction
         List<HiveTableHandle> transactionalTables = tableHandles.stream()
                 .filter(tableHandle -> isTransactionalTable(tableHandle.getTableParameters().orElseThrow(() -> new IllegalStateException("tableParameters missing"))))
                 .collect(toImmutableList());

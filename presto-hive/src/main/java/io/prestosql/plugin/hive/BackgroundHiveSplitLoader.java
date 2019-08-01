@@ -379,11 +379,13 @@ public class BackgroundHiveSplitLoader
             FileInputFormat.setInputPaths(jobConf, path);
             InputSplit[] splits = inputFormat.getSplits(jobConf, 0);
 
+            // TODO assert not transactional table
             return addSplitsToSource(splits, splitFactory);
         }
 
         // Bucketed partitions are fully loaded immediately since all files must be loaded to determine the file to bucket mapping
         if (tableBucketInfo.isPresent()) {
+            // TODO handle transactional tables (currently those with 'bucketing_version'='1' in Hive, since we don't understand v2 bucketing yet)
             return hiveSplitSource.addToQueue(getBucketedSplits(path, fs, splitFactory, tableBucketInfo.get(), bucketConversion));
         }
 
