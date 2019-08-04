@@ -131,8 +131,11 @@ public class SemiTransactionalHiveMetastore
     private ExclusiveOperation bufferedExclusiveOperation;
     @GuardedBy("this")
     private State state = State.EMPTY;
+
     @GuardedBy("this")
-    private Map<String, Optional<HiveTransaction>> hiveTransactions = new HashMap<>();
+    private Optional<String> currentQueryId = Optional.empty();
+    @GuardedBy("this")
+    private Optional<HiveTransaction> currentHiveTransaction = Optional.empty();
 
     public SemiTransactionalHiveMetastore(HdfsEnvironment hdfsEnvironment, HiveMetastore delegate, Executor renameExecutor, boolean skipDeletionForAlter, boolean skipTargetCleanupOnRollback)
     {
@@ -950,18 +953,19 @@ public class SemiTransactionalHiveMetastore
     public void beginQuery(ConnectorSession session, List<HiveTableHandle> tableHandles)
     {
         String queryId = session.getQueryId();
-        synchronized (this) {
-            checkState(!hiveTransactions.containsKey(queryId), "Query already begun");
-        }
-
         List<HiveTableHandle> transactionalTables = tableHandles.stream()
                 .filter(tableHandle -> isTransactionalTable(tableHandle.getTableParameters().orElseThrow(() -> new IllegalStateException("tableParameters missing"))))
                 .collect(toImmutableList());
 
         if (transactionalTables.isEmpty()) {
             synchronized (this) {
-                checkState(!hiveTransactions.containsKey(queryId), "Query begun concurrently");
-                hiveTransactions.put(queryId, Optional.empty());
+                checkState(
+                        !currentQueryId.isPresent() && !currentHiveTransaction.isPresent(),
+                        "Query already begun: %s %s while starting query %s",
+                        currentQueryId,
+                        currentHiveTransaction,
+                        queryId);
+                currentQueryId = Optional.of(queryId);
             }
             return;
         }
@@ -995,16 +999,22 @@ public class SemiTransactionalHiveMetastore
             delegate.acquireSharedReadLock(session.getUser(), queryId, transactionId, fullTables, partitions);
 
             String validWriteIds = delegate.getValidWriteIds(
-                            transactionalTables.stream()
-                                    .map(HiveTableHandle::getSchemaTableName)
-                                    .collect(toImmutableList()),
-                            transactionId);
+                    transactionalTables.stream()
+                            .map(HiveTableHandle::getSchemaTableName)
+                            .collect(toImmutableList()),
+                    transactionId);
 
             HiveTransaction transaction = new HiveTransaction(transactionId, heartbeatTask, validWriteIds);
 
             synchronized (this) {
-                checkState(!hiveTransactions.containsKey(queryId), "Query begun concurrently");
-                hiveTransactions.put(queryId, Optional.of(transaction));
+                checkState(
+                        !currentQueryId.isPresent() && !currentHiveTransaction.isPresent(),
+                        "Query already begun: %s %s while starting query %s",
+                        currentQueryId,
+                        currentHiveTransaction,
+                        queryId);
+                currentQueryId = Optional.of(queryId);
+                currentHiveTransaction = Optional.of(transaction);
             }
         }
         catch (RuntimeException e) {
@@ -1022,16 +1032,18 @@ public class SemiTransactionalHiveMetastore
 
     public synchronized Optional<ValidTxnWriteIdList> getValidWriteIds(ConnectorSession session)
     {
-        Optional<HiveTransaction> transaction = hiveTransactions.get(session.getQueryId());
-        checkState(transaction != null, "Query not found: %s", session.getQueryId());
-        return transaction.map(HiveTransaction::getValidWriteIds);
+        String queryId = session.getQueryId();
+        checkState(currentQueryId.equals(Optional.of(queryId)), "Invalid query id %s while current query is", queryId, currentQueryId);
+        return currentHiveTransaction.map(HiveTransaction::getValidWriteIds);
     }
 
     public synchronized void cleanupQuery(ConnectorSession session)
     {
         String queryId = session.getQueryId();
-        Optional<HiveTransaction> transaction = hiveTransactions.remove(queryId);
-        checkState(transaction != null, "Query not found: %s", queryId);
+        checkState(currentQueryId.equals(Optional.of(queryId)), "Invalid query id %s while current query is", queryId, currentQueryId);
+        Optional<HiveTransaction> transaction = currentHiveTransaction;
+        currentQueryId = Optional.empty();
+        currentHiveTransaction = Optional.empty();
 
         if (!transaction.isPresent()) {
             return;
