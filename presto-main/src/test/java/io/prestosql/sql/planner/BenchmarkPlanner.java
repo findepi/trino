@@ -27,7 +27,6 @@ import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
-import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
@@ -54,9 +53,9 @@ import static java.lang.String.format;
 @SuppressWarnings("MethodMayBeStatic")
 @State(Scope.Benchmark)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
-@Warmup(iterations = 5)
+@Warmup(iterations = 3)
 @Fork(1)
-@Measurement(iterations = 20)
+@Measurement(iterations = 10)
 @BenchmarkMode(Mode.AverageTime)
 public class BenchmarkPlanner
 {
@@ -64,10 +63,10 @@ public class BenchmarkPlanner
     @State(Scope.Benchmark)
     public static class BenchmarkData
     {
-        @Param({"true", "false"})
+//        @Param({"true", "false"})
         private String iterativeOptimizerEnabled = "true";
 
-        @Param({"optimized", "created"})
+//        @Param({"optimized", "created"})
         private String stage = LogicalPlanner.Stage.OPTIMIZED.toString();
 
         private LocalQueryRunner queryRunner;
