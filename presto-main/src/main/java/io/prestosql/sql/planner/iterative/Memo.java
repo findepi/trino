@@ -159,6 +159,7 @@ public class Memo
             evictStatisticsAndCost(group); // cost is derived from stats, also needs eviction
         }
         group.stats = requireNonNull(stats, "stats is null");
+        markNotOptimal(group);
     }
 
     public Optional<PlanCostEstimate> getCost(int group)
@@ -166,17 +167,55 @@ public class Memo
         return Optional.ofNullable(getGroup(group).cost);
     }
 
-    public void storeCost(int group, PlanCostEstimate cost)
+    public void storeCost(int groupId, PlanCostEstimate cost)
     {
-        getGroup(group).cost = requireNonNull(cost, "cost is null");
+        Group group = getGroup(groupId);
+        group.cost = requireNonNull(cost, "cost is null");
+        markNotOptimal(group);
+    }
+
+    public boolean isOptimal(int groupId)
+    {
+        return getGroup(groupId).optimal;
+    }
+
+    public void markOptimal(int groupId)
+    {
+        Group group = getGroup(groupId);
+        if (group.optimal) {
+            return;
+        }
+        for (int childId : getAllReferences(group.membership)) {
+            Group child = getGroup(childId);
+            checkState(child.optimal, "Cannot mark group %s (%s) as optimal because a child group %s (%s) is not optimal", groupId, group.membership, childId, child.membership);
+        }
+        group.optimal = true;
+    }
+
+    private void markNotOptimal(Group group)
+    {
+        if (!group.optimal) {
+            return;
+        }
+
+        group.optimal = false;
+        for (int parentGroup : group.incomingReferences.elementSet()) {
+            if (parentGroup != ROOT_GROUP_REF) {
+                markNotOptimal(getGroup(parentGroup));
+            }
+        }
     }
 
     private void incrementReferenceCounts(PlanNode fromNode, int fromGroup)
     {
         Set<Integer> references = getAllReferences(fromNode);
 
-        for (int group : references) {
-            groups.get(group).incomingReferences.add(fromGroup);
+        for (int groupId : references) {
+            Group group = groups.get(groupId);
+            group.incomingReferences.add(fromGroup);
+            if (!group.optimal) {
+                markNotOptimal(getGroup(fromGroup));
+            }
         }
     }
 
@@ -226,13 +265,15 @@ public class Memo
             return ((GroupReference) node).getGroupId();
         }
 
-        int group = nextGroupId();
+        int groupId = nextGroupId();
         PlanNode rewritten = insertChildrenAndRewrite(node);
 
-        groups.put(group, Group.withMember(rewritten));
-        incrementReferenceCounts(rewritten, group);
+        Group group = Group.withMember(rewritten);
+        groups.put(groupId, group);
+        incrementReferenceCounts(rewritten, groupId);
+        markNotOptimal(group);
 
-        return group;
+        return groupId;
     }
 
     private int nextGroupId()
@@ -254,6 +295,7 @@ public class Memo
 
         private PlanNode membership;
         private final Multiset<Integer> incomingReferences = HashMultiset.create();
+        private boolean optimal = true; // gets reset after new group is linked with other groups
         @Nullable
         private PlanNodeStatsEstimate stats;
         @Nullable

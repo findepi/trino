@@ -102,6 +102,10 @@ public class IterativeOptimizer
     {
         // tracks whether this group or any children groups change as
         // this method executes
+        if (context.memo.isOptimal(group)) {
+            return false;
+        }
+
         boolean progress = exploreNode(group, context);
 
         while (exploreChildren(group, context)) {
@@ -115,6 +119,7 @@ public class IterativeOptimizer
             }
         }
 
+        context.memo.markOptimal(group);
         return progress;
     }
 
