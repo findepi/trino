@@ -59,11 +59,13 @@ import static com.fasterxml.jackson.core.JsonToken.END_OBJECT;
 import static com.fasterxml.jackson.core.JsonToken.FIELD_NAME;
 import static com.fasterxml.jackson.core.JsonToken.START_OBJECT;
 import static com.fasterxml.jackson.core.JsonToken.VALUE_STRING;
+import static com.google.common.base.Strings.isNullOrEmpty;
 import static com.google.common.hash.Hashing.hmacSha256;
 import static com.google.common.net.HttpHeaders.AUTHORIZATION;
 import static com.google.common.net.HttpHeaders.COOKIE;
 import static com.google.common.net.HttpHeaders.SET_COOKIE;
 import static com.google.common.net.HttpHeaders.USER_AGENT;
+import static com.google.common.net.HttpHeaders.X_FORWARDED_FOR;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static io.airlift.concurrent.Threads.daemonThreadsNamed;
 import static io.airlift.http.client.HttpUriBuilder.uriBuilderFrom;
@@ -189,6 +191,7 @@ public class ProxyResource
             Request.Builder requestBuilder,
             Function<ProxyResponse, Response> responseBuilder)
     {
+        addForwardingHeaders(servletRequest, requestBuilder);
         setupBearerToken(servletRequest, requestBuilder);
 
         for (String name : list(servletRequest.getHeaderNames())) {
@@ -244,6 +247,18 @@ public class ProxyResource
     private FluentFuture<ProxyResponse> executeHttp(Request request)
     {
         return FluentFuture.from(httpClient.executeAsync(request, new ProxyResponseHandler()));
+    }
+
+    private static void addForwardingHeaders(HttpServletRequest servletRequest, Request.Builder requestBuilder)
+    {
+        // TODO support 'Forwarded' header
+
+        if (!isNullOrEmpty(servletRequest.getHeader(X_FORWARDED_FOR))) {
+            requestBuilder.addHeader(X_FORWARDED_FOR, servletRequest.getHeader(X_FORWARDED_FOR) + "," + servletRequest.getRemoteAddr());
+        }
+        else {
+            requestBuilder.addHeader(X_FORWARDED_FOR, servletRequest.getRemoteAddr());
+        }
     }
 
     private void setupBearerToken(HttpServletRequest servletRequest, Request.Builder requestBuilder)
