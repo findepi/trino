@@ -57,6 +57,7 @@ import static io.prestosql.spi.type.IntegerType.INTEGER;
 import static io.prestosql.spi.type.TimestampType.TIMESTAMP;
 import static io.prestosql.spi.type.VarcharType.createUnboundedVarcharType;
 import static java.lang.String.format;
+import static java.nio.charset.Charset.defaultCharset;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toSet;
@@ -296,7 +297,7 @@ public class LocalFileRecordCursor
             FileInputStream fileInputStream = new FileInputStream(file);
 
             InputStream in = isGZipped(file) ? new GZIPInputStream(fileInputStream) : fileInputStream;
-            return new BufferedReader(new InputStreamReader(in));
+            return new BufferedReader(new InputStreamReader(in, defaultCharset())); // TODO should defaultCharset be used?
         }
 
         public static boolean isGZipped(File file)

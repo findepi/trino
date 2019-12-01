@@ -19,14 +19,15 @@ import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.teradata.tpcds.Table;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Optional;
 
 import static java.lang.String.format;
+import static java.nio.file.StandardOpenOption.APPEND;
 
 public class TableStatisticsDataRepository
 {
@@ -58,9 +59,7 @@ public class TableStatisticsDataRepository
             objectMapper
                     .writerWithDefaultPrettyPrinter()
                     .writeValue(file, tableStatisticsData);
-            try (FileWriter fileWriter = new FileWriter(file, true)) {
-                fileWriter.append('\n');
-            }
+            Files.write(path, new byte[] {'\n'}, APPEND);
         }
         catch (IOException e) {
             throw new RuntimeException("Could not save table statistics data", e);

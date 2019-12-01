@@ -18,9 +18,9 @@ import io.airlift.tpch.TpchColumn;
 import io.airlift.tpch.TpchTable;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Optional;
@@ -28,6 +28,7 @@ import java.util.Optional;
 import static com.google.common.base.Preconditions.checkArgument;
 import static io.prestosql.plugin.tpch.util.Optionals.withBoth;
 import static java.lang.String.format;
+import static java.nio.file.StandardOpenOption.APPEND;
 
 public class TableStatisticsDataRepository
 {
@@ -58,9 +59,7 @@ public class TableStatisticsDataRepository
             objectMapper
                     .writerWithDefaultPrettyPrinter()
                     .writeValue(file, tableStatisticsData);
-            try (FileWriter fileWriter = new FileWriter(file, true)) {
-                fileWriter.append('\n');
-            }
+            Files.write(path, new byte[] {'\n'}, APPEND);
         }
         catch (IOException e) {
             throw new RuntimeException("Could not save table statistics data", e);
