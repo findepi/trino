@@ -18,7 +18,7 @@ HADOOP_MASTER_IP=$(hadoop_master_ip)
 # run product tests
 pushd ${PROJECT_ROOT}
 set +e
-./mvnw -B -pl presto-hive-hadoop2 test -P test-hive-hadoop2 \
+echo ./mvnw -B -pl presto-hive-hadoop2 test -P test-hive-hadoop2 \
   -DHADOOP_USER_NAME=hive \
   -Dhive.hadoop2.metastoreHost=localhost \
   -Dhive.hadoop2.metastorePort=9083 \
@@ -32,6 +32,6 @@ EXIT_CODE=$?
 set -e
 popd
 
-cleanup_docker_containers
+#cleanup_docker_containers
 
 exit ${EXIT_CODE}
