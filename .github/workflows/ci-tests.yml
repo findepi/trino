@@ -1,6 +1,6 @@
 name: ci-tests
 
-on: [push, pull_request]
+#on: [push, pull_request]
 
 env:
   MAVEN_OPTS: "-Xmx512M -XX:+ExitOnOutOfMemoryError"

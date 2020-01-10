@@ -14,9 +14,9 @@ jobs:
       fail-fast: false
       matrix:
         config: [
-          config-empty,
+#          config-empty,
           config-hdp3,
-          config-cdh5,
+#          config-cdh5,
         ]
         suite: [
           suite-1,
