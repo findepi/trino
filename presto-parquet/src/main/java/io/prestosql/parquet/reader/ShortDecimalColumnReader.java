@@ -25,7 +25,6 @@ import static io.prestosql.spi.StandardErrorCode.NOT_SUPPORTED;
 import static io.prestosql.spi.type.BigintType.BIGINT;
 import static io.prestosql.spi.type.DecimalConversions.shortToLongCast;
 import static io.prestosql.spi.type.DecimalConversions.shortToShortCast;
-import static io.prestosql.spi.type.Decimals.MAX_SHORT_PRECISION;
 import static io.prestosql.spi.type.Decimals.isLongDecimal;
 import static io.prestosql.spi.type.Decimals.isShortDecimal;
 import static io.prestosql.spi.type.Decimals.longTenToNth;
@@ -99,22 +98,10 @@ public class ShortDecimalColumnReader
                     throw new PrestoException(NOT_SUPPORTED, format("Unsupported Presto column type (%s) for Parquet column (%s)", prestoType, columnDescriptor));
                 }
 
-                long rescale = longTenToNth(parquetDecimalType.getScale());
-                long convertedValue = shortToShortCast(
-                        value,
-                        parquetDecimalType.getPrecision(),
-                        parquetDecimalType.getScale(),
-                        MAX_SHORT_PRECISION,
-                        0,
-                        rescale,
-                        rescale / 2);
-
-                if (isInValidNumberRange(prestoType, convertedValue)) {
-                    prestoType.writeLong(blockBuilder, convertedValue);
+                if (!isInValidNumberRange(prestoType, value)) {
+                    throw new PrestoException(NOT_SUPPORTED, format("Could not coerce from %s to %s: %s", parquetDecimalType, prestoType, value));
                 }
-                else {
-                    throw new PrestoException(NOT_SUPPORTED, format("Could not coerce from %s to %s", parquetDecimalType, prestoType));
-                }
+                prestoType.writeLong(blockBuilder, value);
             }
         }
         else if (isValueNull()) {
@@ -132,13 +119,13 @@ public class ShortDecimalColumnReader
         if (type.equals(TINYINT)) {
             return Byte.MIN_VALUE <= value && value <= Byte.MAX_VALUE;
         }
-        else if (type.equals(SMALLINT)) {
+        if (type.equals(SMALLINT)) {
             return Short.MIN_VALUE <= value && value <= Short.MAX_VALUE;
         }
-        else if (type.equals(INTEGER)) {
+        if (type.equals(INTEGER)) {
             return Integer.MIN_VALUE <= value && value <= Integer.MAX_VALUE;
         }
-        else if (type.equals(BIGINT)) {
+        if (type.equals(BIGINT)) {
             return true;
         }
 
