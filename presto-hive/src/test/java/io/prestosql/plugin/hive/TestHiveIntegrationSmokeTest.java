@@ -54,8 +54,6 @@ import io.prestosql.testing.MaterializedResult;
 import io.prestosql.testing.MaterializedRow;
 import io.prestosql.testing.QueryRunner;
 import io.prestosql.testing.ResultWithQueryId;
-import io.prestosql.testing.sql.SqlExecutor;
-import io.prestosql.testing.sql.TestTable;
 import io.prestosql.type.TypeDeserializer;
 import org.apache.hadoop.fs.Path;
 import org.intellij.lang.annotations.Language;
@@ -69,6 +67,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -160,6 +159,7 @@ import static org.testng.FileAssert.assertFile;
 public class TestHiveIntegrationSmokeTest
         extends AbstractTestIntegrationSmokeTest
 {
+    private static final DateTimeFormatter TIMESTAMP_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSSSS");
     private final String catalog;
     private final Session bucketedSession;
 
@@ -4142,33 +4142,30 @@ public class TestHiveIntegrationSmokeTest
     @DataProvider
     public Object[][] timestampPrecisionAndValues()
     {
-        // TODO: revisit values once we handle write path and are able to write with higher precision,
-        //  make sure push-down happens correctly in the presence of rounding;
-        // consider using LocalDateTime instead of String
         return new Object[][] {
-                {HiveTimestampPrecision.MILLISECONDS, "2012-10-31 01:00:08.123"},
-                {HiveTimestampPrecision.MICROSECONDS, "2012-10-31 01:00:08.123000"},
-                {HiveTimestampPrecision.NANOSECONDS, "2012-10-31 01:00:08.123000000"}};
+                {HiveTimestampPrecision.MILLISECONDS, LocalDateTime.parse("2012-10-31T01:00:08.123")},
+                {HiveTimestampPrecision.MICROSECONDS, LocalDateTime.parse("2012-10-31T01:00:08.123456")},
+                {HiveTimestampPrecision.NANOSECONDS, LocalDateTime.parse("2012-10-31T01:00:08.123456789")}};
     }
 
     @Test(dataProvider = "timestampPrecisionAndValues")
-    public void testParquetTimestampPredicatePushdown(HiveTimestampPrecision timestampPrecision, String value)
+    public void testParquetTimestampPredicatePushdown(HiveTimestampPrecision timestampPrecision, LocalDateTime value)
     {
         Session session = withTimestampPrecision(getSession(), timestampPrecision.name());
         assertUpdate("DROP TABLE IF EXISTS test_parquet_timestamp_predicate_pushdown");
         assertUpdate("CREATE TABLE test_parquet_timestamp_predicate_pushdown (t TIMESTAMP) WITH (format = 'PARQUET')");
-        assertUpdate(format("INSERT INTO test_parquet_timestamp_predicate_pushdown VALUES (TIMESTAMP '%s')", value), 1);
-        assertQuery(session, "SELECT * FROM test_parquet_timestamp_predicate_pushdown", format("VALUES (TIMESTAMP '%s')", value));
+        assertUpdate(session, format("INSERT INTO test_parquet_timestamp_predicate_pushdown VALUES (TIMESTAMP '%s')", TIMESTAMP_FORMATTER.format(value)), 1);
+        assertQuery(session, "SELECT * FROM test_parquet_timestamp_predicate_pushdown", format("VALUES (TIMESTAMP '%s')", TIMESTAMP_FORMATTER.format(value)));
 
         DistributedQueryRunner queryRunner = (DistributedQueryRunner) getQueryRunner();
         ResultWithQueryId<MaterializedResult> queryResult = queryRunner.executeWithQueryId(
                 session,
-                format("SELECT * FROM test_parquet_timestamp_predicate_pushdown WHERE t < TIMESTAMP '%s'", value));
+                format("SELECT * FROM test_parquet_timestamp_predicate_pushdown WHERE t < TIMESTAMP '%s'", TIMESTAMP_FORMATTER.format(value)));
         assertEquals(getQueryInfo(queryRunner, queryResult).getQueryStats().getProcessedInputDataSize().toBytes(), 0);
 
         queryResult = queryRunner.executeWithQueryId(
                 session,
-                format("SELECT * FROM test_parquet_timestamp_predicate_pushdown WHERE t > TIMESTAMP '%s'", value));
+                format("SELECT * FROM test_parquet_timestamp_predicate_pushdown WHERE t > TIMESTAMP '%s'", TIMESTAMP_FORMATTER.format(value)));
         assertEquals(getQueryInfo(queryRunner, queryResult).getQueryStats().getProcessedInputDataSize().toBytes(), 0);
 
         // TODO: replace this with a simple query stats check once we find a way to wait until all pending updates to query stats have been applied
@@ -4180,7 +4177,44 @@ public class TestHiveIntegrationSmokeTest
         assertEventually(new Duration(30, SECONDS), () -> {
             ResultWithQueryId<MaterializedResult> result = queryRunner.executeWithQueryId(
                     session,
-                    format("SELECT * FROM test_parquet_timestamp_predicate_pushdown WHERE t = TIMESTAMP '%s'", value));
+                    format("SELECT * FROM test_parquet_timestamp_predicate_pushdown WHERE t = TIMESTAMP '%s'", TIMESTAMP_FORMATTER.format(value)));
+            sleeper.sleep();
+            assertThat(getQueryInfo(queryRunner, result).getQueryStats().getProcessedInputDataSize().toBytes()).isGreaterThan(0);
+        });
+    }
+
+    @Test(dataProvider = "timestampPrecisionAndValues")
+    public void testOrcTimestampPredicatePushdown(HiveTimestampPrecision timestampPrecision, LocalDateTime value)
+    {
+        Session session = withTimestampPrecision(getSession(), timestampPrecision.name());
+        assertUpdate("DROP TABLE IF EXISTS test_orc_timestamp_predicate_pushdown");
+        assertUpdate("CREATE TABLE test_orc_timestamp_predicate_pushdown (t TIMESTAMP) WITH (format = 'ORC')");
+        assertUpdate(session, format("INSERT INTO test_orc_timestamp_predicate_pushdown VALUES (TIMESTAMP '%s')", TIMESTAMP_FORMATTER.format(value)), 1);
+        assertQuery(session, "SELECT * FROM test_orc_timestamp_predicate_pushdown", format("VALUES (TIMESTAMP '%s')", TIMESTAMP_FORMATTER.format(value)));
+
+        // to account for the fact that ORC stats are stored at millisecond precision and Presto rounds timestamps,
+        // we filter by timestamps that differ from the actual value by at least 1ms, to observe pruning
+        DistributedQueryRunner queryRunner = (DistributedQueryRunner) getQueryRunner();
+        ResultWithQueryId<MaterializedResult> queryResult = queryRunner.executeWithQueryId(
+                session,
+                format("SELECT * FROM test_orc_timestamp_predicate_pushdown WHERE t < TIMESTAMP '%s'", TIMESTAMP_FORMATTER.format(value.minusNanos(MILLISECONDS.toNanos(1)))));
+        assertEquals(getQueryInfo(queryRunner, queryResult).getQueryStats().getProcessedInputDataSize().toBytes(), 0);
+
+        queryResult = queryRunner.executeWithQueryId(
+                session,
+                format("SELECT * FROM test_orc_timestamp_predicate_pushdown WHERE t > TIMESTAMP '%s'", TIMESTAMP_FORMATTER.format(value.plusNanos(MILLISECONDS.toNanos(1)))));
+        assertEquals(getQueryInfo(queryRunner, queryResult).getQueryStats().getProcessedInputDataSize().toBytes(), 0);
+
+        // TODO: replace this with a simple query stats check once we find a way to wait until all pending updates to query stats have been applied
+        ExponentialSleeper sleeper = new ExponentialSleeper(
+                new Duration(0, SECONDS),
+                new Duration(5, SECONDS),
+                new Duration(100, MILLISECONDS),
+                2.0);
+        assertEventually(new Duration(30, SECONDS), () -> {
+            ResultWithQueryId<MaterializedResult> result = queryRunner.executeWithQueryId(
+                    session,
+                    format("SELECT * FROM test_orc_timestamp_predicate_pushdown WHERE t = TIMESTAMP '%s'", TIMESTAMP_FORMATTER.format(value)));
             sleeper.sleep();
             assertThat(getQueryInfo(queryRunner, result).getQueryStats().getProcessedInputDataSize().toBytes()).isGreaterThan(0);
         });
@@ -5747,17 +5781,6 @@ public class TestHiveIntegrationSmokeTest
         };
     }
 
-    @Test(dataProvider = "nonDefaultTimestampPrecisions")
-    public void testWriteNonDefaultPrecisionTimestampColumn(HiveTimestampPrecision timestampPrecision)
-    {
-        SqlExecutor sqlExecutor = sql -> getQueryRunner().execute(sql);
-        try (TestTable table = new TestTable(sqlExecutor, "test_analyze_empty_timestamp", "(c_bigint BIGINT, c_timestamp TIMESTAMP)")) {
-            Session session = withTimestampPrecision(getSession(), timestampPrecision.name());
-            assertQueryFails(session, "ANALYZE " + table.getName(), format("\\QCREATE TABLE, INSERT and ANALYZE are not supported with requested timestamp precision: timestamp(%s)\\E", timestampPrecision.getPrecision()));
-            assertQueryFails(session, format("INSERT INTO %s VALUES (1, TIMESTAMP'2001-02-03 11:22:33.123456789')", table.getName()), format("\\QCREATE TABLE, INSERT and ANALYZE are not supported with requested timestamp precision: timestamp(%s)\\E", timestampPrecision.getPrecision()));
-        }
-    }
-
     @Test
     public void testInvalidAnalyzePartitionedTable()
     {
@@ -7238,6 +7261,8 @@ public class TestHiveIntegrationSmokeTest
     {
         return Session.builder(session)
                 .setCatalogSessionProperty(catalog, "timestamp_precision", precision)
+                // TODO: remove when implementing https://github.com/prestosql/presto/issues/5170
+                .setCatalogSessionProperty(catalog, "collect_column_statistics_on_write", "false")
                 .build();
     }
 }
