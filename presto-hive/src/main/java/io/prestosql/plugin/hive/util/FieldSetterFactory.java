@@ -392,7 +392,7 @@ public final class FieldSetterFactory
             long epochMillis = floorDiv(micros, MICROSECONDS_PER_MILLISECOND);
             epochMillis = timeZone.convertLocalToUTC(epochMillis, false);
             int nanosFromMicros = floorMod(micros, MICROSECONDS_PER_SECOND) * NANOSECONDS_PER_MICROSECOND;
-            int nanosFromPicos = (int) roundDiv(picosSupplier.getAsInt(), PICOSECONDS_PER_NANOSECOND);
+            int nanosFromPicos = roundDiv(picosSupplier.getAsInt(), PICOSECONDS_PER_NANOSECOND);
             return Timestamp.ofEpochMilli(epochMillis, nanosFromMicros + nanosFromPicos);
         }
     }
