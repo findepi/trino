@@ -46,6 +46,8 @@ import io.trino.sql.planner.plan.ValuesNode;
 import io.trino.sql.planner.plan.WindowNode;
 import io.trino.sql.tree.ComparisonExpression;
 import io.trino.sql.tree.Expression;
+import io.trino.sql.tree.IsNullPredicate;
+import io.trino.sql.tree.LogicalBinaryExpression;
 import io.trino.sql.tree.NodeRef;
 import io.trino.sql.tree.Row;
 import io.trino.sql.tree.SymbolReference;
@@ -88,9 +90,10 @@ public class EffectivePredicateExtractor
             entry -> {
                 SymbolReference reference = entry.getKey().toSymbolReference();
                 Expression expression = entry.getValue();
-                // TODO: this is not correct with respect to NULLs ('reference IS NULL' would be correct, rather than 'reference = NULL')
-                // TODO: switch this to 'IS NOT DISTINCT FROM' syntax when EqualityInference properly supports it
-                return new ComparisonExpression(EQUAL, reference, expression);
+                return new LogicalBinaryExpression(
+                        LogicalBinaryExpression.Operator.OR,
+                        new ComparisonExpression(EQUAL, reference, expression),
+                        new IsNullPredicate(reference));
             };
 
     private final DomainTranslator domainTranslator;
