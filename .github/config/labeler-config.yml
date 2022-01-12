@@ -1,0 +1,6 @@
+# Pull Request Labeler Github Action Configuration: https://github.com/marketplace/actions/labeler
+"tests:hive":
+  - plugin/trino-hive/**
+  - lib/trino-orc/**
+  - lib/trino-parquet/**
+  - testing/trino-product-tests/**
