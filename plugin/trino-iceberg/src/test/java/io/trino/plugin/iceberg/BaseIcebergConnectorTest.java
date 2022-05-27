@@ -2853,13 +2853,6 @@ public abstract class BaseIcebergConnectorTest
             return Optional.of(dataMappingTestSetup.asUnsupported());
         }
 
-        // According to Iceberg specification all time and timestamp values are stored with microsecond precision.
-        if (typeName.equals("time") ||
-                typeName.equals("timestamp") ||
-                typeName.equals("timestamp(3) with time zone")) {
-            return Optional.of(dataMappingTestSetup.asUnsupported());
-        }
-
         return Optional.of(dataMappingTestSetup);
     }
 
