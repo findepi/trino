@@ -454,7 +454,7 @@ public class IcebergMetadata
             Supplier<List<FileScanTask>> lazyFiles = Suppliers.memoize(() -> {
                 TableScan tableScan = icebergTable.newScan()
                         .useSnapshot(table.getSnapshotId().get())
-                        .filter(toIcebergExpression(enforcedPredicate))
+                        .filter(toIcebergExpression(enforcedPredicate, table.getPartitionFilter()))
                         .includeColumnStats();
 
                 try (CloseableIterable<FileScanTask> iterator = tableScan.planFiles()) {
@@ -1508,9 +1508,9 @@ public class IcebergMetadata
         if (!deletesByFilePath.keySet().equals(fullyDeletedFiles.keySet()) || commitTasks.stream().anyMatch(task -> task.getContent() == FileContent.DATA)) {
             RowDelta rowDelta = transaction.newRowDelta();
             table.getSnapshotId().map(icebergTable::snapshot).ifPresent(s -> rowDelta.validateFromSnapshot(s.snapshotId()));
-            if (!table.getEnforcedPredicate().isAll()) {
-                rowDelta.conflictDetectionFilter(toIcebergExpression(table.getEnforcedPredicate()));
-            }
+            //if (!table.getEnforcedPredicate().isAll()) {
+                rowDelta.conflictDetectionFilter(toIcebergExpression(table.getEnforcedPredicate(), table.getPartitionFilter()));
+            //}
 
             IsolationLevel isolationLevel = IsolationLevel.fromName(icebergTable.properties().getOrDefault(DELETE_ISOLATION_LEVEL, DELETE_ISOLATION_LEVEL_DEFAULT));
             if (isolationLevel == IsolationLevel.SERIALIZABLE) {
@@ -1684,7 +1684,7 @@ public class IcebergMetadata
         Table icebergTable = catalog.loadTable(session, handle.getSchemaTableName());
 
         icebergTable.newDelete()
-                .deleteFromRowFilter(toIcebergExpression(handle.getEnforcedPredicate()))
+                .deleteFromRowFilter(toIcebergExpression(handle.getEnforcedPredicate(), handle.getPartitionFilter()))
                 .commit();
 
         Map<String, String> summary = icebergTable.currentSnapshot().summary();

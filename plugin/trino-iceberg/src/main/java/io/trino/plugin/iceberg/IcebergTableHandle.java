@@ -20,6 +20,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import io.airlift.units.DataSize;
+import io.trino.plugin.iceberg.filter.PartitionFilter;
 import io.trino.spi.connector.ConnectorTableHandle;
 import io.trino.spi.connector.RetryMode;
 import io.trino.spi.connector.SchemaTableName;
@@ -56,6 +57,7 @@ public class IcebergTableHandle
 
     // Filter guaranteed to be enforced by Iceberg connector
     private final TupleDomain<IcebergColumnHandle> enforcedPredicate;
+    private final PartitionFilter partitionFilter; // also enforced
 
     private final Set<IcebergColumnHandle> projectedColumns;
     private final Optional<String> nameMappingJson;
@@ -75,6 +77,7 @@ public class IcebergTableHandle
             @JsonProperty("formatVersion") int formatVersion,
             @JsonProperty("unenforcedPredicate") TupleDomain<IcebergColumnHandle> unenforcedPredicate,
             @JsonProperty("enforcedPredicate") TupleDomain<IcebergColumnHandle> enforcedPredicate,
+            @JsonProperty("partitionFilter") PartitionFilter partitionFilter,
             @JsonProperty("projectedColumns") Set<IcebergColumnHandle> projectedColumns,
             @JsonProperty("nameMappingJson") Optional<String> nameMappingJson,
             @JsonProperty("tableLocation") String tableLocation,
@@ -92,6 +95,7 @@ public class IcebergTableHandle
                 formatVersion,
                 unenforcedPredicate,
                 enforcedPredicate,
+                partitionFilter,
                 projectedColumns,
                 nameMappingJson,
                 tableLocation,
@@ -112,6 +116,7 @@ public class IcebergTableHandle
             int formatVersion,
             TupleDomain<IcebergColumnHandle> unenforcedPredicate,
             TupleDomain<IcebergColumnHandle> enforcedPredicate,
+            PartitionFilter partitionFilter,
             Set<IcebergColumnHandle> projectedColumns,
             Optional<String> nameMappingJson,
             String tableLocation,
@@ -130,6 +135,7 @@ public class IcebergTableHandle
         this.formatVersion = formatVersion;
         this.unenforcedPredicate = requireNonNull(unenforcedPredicate, "unenforcedPredicate is null");
         this.enforcedPredicate = requireNonNull(enforcedPredicate, "enforcedPredicate is null");
+        this.partitionFilter = requireNonNull(partitionFilter, "partitionFilter is null");
         this.projectedColumns = ImmutableSet.copyOf(requireNonNull(projectedColumns, "projectedColumns is null"));
         this.nameMappingJson = requireNonNull(nameMappingJson, "nameMappingJson is null");
         this.tableLocation = requireNonNull(tableLocation, "tableLocation is null");
@@ -192,6 +198,12 @@ public class IcebergTableHandle
     public TupleDomain<IcebergColumnHandle> getEnforcedPredicate()
     {
         return enforcedPredicate;
+    }
+
+    @JsonProperty
+    public PartitionFilter getPartitionFilter()
+    {
+        return partitionFilter;
     }
 
     @JsonProperty

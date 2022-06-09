@@ -100,7 +100,7 @@ public class TableStatisticsMaker
         }
 
         TableScan tableScan = icebergTable.newScan()
-                .filter(toIcebergExpression(enforcedPredicate))
+                .filter(toIcebergExpression(enforcedPredicate, tableHandle.getPartitionFilter()))
                 .useSnapshot(tableHandle.getSnapshotId().get())
                 .includeColumnStats();
 
