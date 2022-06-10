@@ -171,6 +171,20 @@ public final class VarcharType
     }
 
     @Override
+    public Optional<Object> getPreviousValue(Object value)
+    {
+        // TODO: implement
+        return super.getPreviousValue(value);
+    }
+
+    @Override
+    public Optional<Object> getNextValue(Object value)
+    {
+        // TODO: implement
+        return super.getNextValue(value);
+    }
+
+    @Override
     public void appendTo(Block block, int position, BlockBuilder blockBuilder)
     {
         if (block.isNull(position)) {
