@@ -164,7 +164,7 @@ public class IcebergSplitSource
                 return completedFuture(NO_MORE_SPLITS_BATCH);
             }
 
-            Expression filterExpression = toIcebergExpression(effectivePredicate, tableHandle.getPartitionFilter());
+            Expression filterExpression = toIcebergExpression(effectivePredicate);
             this.fileScanTaskIterable = TableScanUtil.splitFiles(
                     tableScan.filter(filterExpression)
                             .includeColumnStats()

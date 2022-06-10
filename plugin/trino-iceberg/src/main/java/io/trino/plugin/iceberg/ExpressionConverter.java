@@ -15,8 +15,6 @@ package io.trino.plugin.iceberg;
 
 import com.google.common.base.VerifyException;
 import io.airlift.slice.Slice;
-import io.trino.plugin.iceberg.filter.ConjunctsFilter;
-import io.trino.plugin.iceberg.filter.PartitionFilter;
 import io.trino.spi.predicate.Domain;
 import io.trino.spi.predicate.Range;
 import io.trino.spi.predicate.TupleDomain;
@@ -49,7 +47,6 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.function.BiFunction;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
 import static io.trino.plugin.iceberg.util.Timestamps.timestampTzToMicros;
 import static io.trino.spi.type.TimeType.TIME_MICROS;
 import static io.trino.spi.type.TimestampType.TIMESTAMP_MICROS;
@@ -75,14 +72,7 @@ public final class ExpressionConverter
 {
     private ExpressionConverter() {}
 
-    public static Expression toIcebergExpression(TupleDomain<IcebergColumnHandle> tupleDomain, PartitionFilter partitionFilter)
-    {
-        return and(
-                toIcebergExpression(tupleDomain),
-                toIcebergExpression(partitionFilter));
-    }
-
-    private static Expression toIcebergExpression(TupleDomain<IcebergColumnHandle> tupleDomain)
+    public static Expression toIcebergExpression(TupleDomain<IcebergColumnHandle> tupleDomain)
     {
         if (tupleDomain.isAll()) {
             return alwaysTrue();
@@ -98,14 +88,6 @@ public final class ExpressionConverter
             conjuncts.add(toIcebergExpression(columnHandle.getQualifiedName(), columnHandle.getType(), domain));
         }
         return and(conjuncts);
-    }
-
-    private static Expression toIcebergExpression(PartitionFilter partitionFilter) {
-        if (partitionFilter instanceof ConjunctsFilter) {
-            return and(((ConjunctsFilter) partitionFilter).getConjuncts().stream()
-                    .map(ExpressionConverter::toIcebergExpression)
-                    .collect(toImmutableList()));
-        }
     }
 
     private static Expression toIcebergExpression(String columnName, Type type, Domain domain)
