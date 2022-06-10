@@ -30,10 +30,15 @@ import io.trino.spi.connector.ColumnMetadata;
 import io.trino.spi.connector.ConnectorSession;
 import io.trino.spi.connector.ConnectorTableMetadata;
 import io.trino.spi.connector.SchemaTableName;
+import io.trino.spi.function.InvocationConvention;
+import io.trino.spi.predicate.Domain;
+import io.trino.spi.predicate.Range;
+import io.trino.spi.predicate.ValueSet;
 import io.trino.spi.type.DecimalType;
 import io.trino.spi.type.Int128;
 import io.trino.spi.type.Type;
 import io.trino.spi.type.TypeManager;
+import io.trino.spi.type.TypeOperators;
 import io.trino.spi.type.UuidType;
 import io.trino.spi.type.VarbinaryType;
 import io.trino.spi.type.VarcharType;
@@ -55,6 +60,7 @@ import org.apache.iceberg.types.TypeUtil;
 import org.apache.iceberg.types.Types.NestedField;
 import org.apache.iceberg.types.Types.StructType;
 
+import java.lang.invoke.MethodHandle;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -102,6 +108,9 @@ import static io.trino.spi.StandardErrorCode.GENERIC_INTERNAL_ERROR;
 import static io.trino.spi.StandardErrorCode.INVALID_ARGUMENTS;
 import static io.trino.spi.StandardErrorCode.INVALID_TABLE_PROPERTY;
 import static io.trino.spi.StandardErrorCode.NOT_SUPPORTED;
+import static io.trino.spi.function.InvocationConvention.InvocationArgumentConvention.NEVER_NULL;
+import static io.trino.spi.function.InvocationConvention.InvocationReturnConvention.FAIL_ON_NULL;
+import static io.trino.spi.predicate.Utils.nativeValueToBlock;
 import static io.trino.spi.type.BigintType.BIGINT;
 import static io.trino.spi.type.BooleanType.BOOLEAN;
 import static io.trino.spi.type.DateType.DATE;
@@ -302,6 +311,83 @@ public final class IcebergUtil
             return name;
         }
         return '"' + name.replace("\"", "\"\"") + '"';
+    }
+
+    public static boolean canEnforceColumnConstraintInAllSpecs(TypeOperators typeOperators, Table table, IcebergColumnHandle columnHandle, Domain domain)
+    {
+        return table.specs().values().stream()
+                .allMatch(spec -> canEnforceConstraintWithinPartitioningSpec(typeOperators, spec, columnHandle, domain));
+    }
+
+    private static boolean canEnforceConstraintWithinPartitioningSpec(TypeOperators typeOperators, PartitionSpec spec, IcebergColumnHandle column, Domain domain)
+    {
+        for (PartitionField field : spec.fields()) {
+            if (field.sourceId() != column.getId()) {
+                // Not related to each other.
+                continue;
+            }
+            if (field.transform().isIdentity()) {
+                // A predicate on an identity partitioning column can always be enforced.
+                return true;
+            }
+            // Partitioning transform must return NULL for NULL input.
+            // Here we assume it never returns NULL for non-NULL input,
+            // so NULL values and non-NULL values are always segregated.
+            ValueSet valueSet = domain.getValues();
+
+            boolean canEnforce = valueSet.getValuesProcessor().transform(
+                    ranges -> {
+                        for (Range range : ranges.getOrderedRanges()) {
+                            if (!canEnforceRangeWithPartitioningField(typeOperators, field, range)) {
+                                return false;
+                            }
+                        }
+                        return true;
+                    },
+                    discreteValues -> false,
+                    allOrNone -> true);
+            if (canEnforce) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean canEnforceRangeWithPartitioningField(TypeOperators typeOperators, PartitionField field, Range range)
+    {
+        io.trino.spi.type.Type type = range.getType();
+        if (!type.isOrderable()) {
+            return false;
+        }
+        if (!range.isLowUnbounded()) {
+            Object boundedValue = range.getLowBoundedValue();
+            Optional<Object> adjacentValue = range.isLowInclusive() ? type.getPreviousValue(boundedValue) : type.getNextValue(boundedValue);
+            if (adjacentValue.isEmpty() || yieldSamePartitioningValue(typeOperators, field, type, boundedValue, adjacentValue.get())) {
+                return false;
+            }
+        }
+        if (!range.isHighUnbounded()) {
+            Object boundedValue = range.getHighBoundedValue();
+            Optional<Object> adjacentValue = range.isHighInclusive() ? type.getNextValue(boundedValue) : type.getPreviousValue(boundedValue);
+            if (adjacentValue.isEmpty() || yieldSamePartitioningValue(typeOperators, field, type, boundedValue, adjacentValue.get())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean yieldSamePartitioningValue(TypeOperators typeOperators, PartitionField field, io.trino.spi.type.Type sourceType, Object first, Object second)
+    {
+        PartitionTransforms.ColumnTransform transform = PartitionTransforms.getColumnTransform(field, sourceType);
+        Object firstTransformed = transform.getValueTransform().apply(nativeValueToBlock(sourceType, first), 0);
+        Object secondTransformed = transform.getValueTransform().apply(nativeValueToBlock(sourceType, second), 0);
+        MethodHandle equalOperator = typeOperators.getEqualOperator(transform.getType(), InvocationConvention.simpleConvention(FAIL_ON_NULL, NEVER_NULL, NEVER_NULL));
+        try {
+            return (boolean) equalOperator.invoke(firstTransformed, secondTransformed);
+        }
+        catch (Throwable throwable) {
+            throw new RuntimeException(throwable);
+        }
     }
 
     public static Object deserializePartitionValue(Type type, String valueString, String name)
