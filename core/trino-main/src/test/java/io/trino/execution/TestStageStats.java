@@ -33,7 +33,7 @@ import static org.testng.Assert.assertEquals;
 
 public class TestStageStats
 {
-    private static final StageStats EXPECTED = new StageStats(
+    public static final StageStats EXPECTED = new StageStats(
             new DateTime(0),
 
             getTestDistribution(1),
