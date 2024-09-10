@@ -879,7 +879,7 @@ public class PlanTester
                 planOptimizersStatsCollector,
                 new CachingTableStatsProvider(getPlannerContext().getMetadata(), session));
 
-        Analysis analysis = analyzer.analyze(preparedQuery.getStatement());
+        Analysis analysis = analyzer.analyze(preparedQuery.getStatement(), sql);
         // make PlanTester always compute plan statistics for test purposes
         return logicalPlanner.plan(analysis, stage);
     }
@@ -947,7 +947,9 @@ public class PlanTester
                                 materializedViewPropertyManager),
                         new ShowStatsRewrite(plannerContext.getMetadata(), queryExplainerFactory, statsCalculator),
                         new ExplainRewrite(queryExplainerFactory, new QueryPreparer(sqlParser)))),
-                plannerContext.getTracer());
+                plannerContext.getTracer(),
+                splitManager,
+                pageSourceManager);
     }
 
     private static List<Split> getNextBatch(SplitSource splitSource)

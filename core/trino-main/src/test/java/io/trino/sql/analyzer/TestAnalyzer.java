@@ -7733,7 +7733,7 @@ public class TestAnalyzer
                 tablePropertyManager,
                 analyzePropertyManager,
                 new TableProceduresPropertyManager(CatalogServiceProvider.fail("procedures are not supported in testing analyzer")));
-        AnalyzerFactory analyzerFactory = new AnalyzerFactory(statementAnalyzerFactory, statementRewrite, plannerContext.getTracer());
+        AnalyzerFactory analyzerFactory = new AnalyzerFactory(statementAnalyzerFactory, statementRewrite, plannerContext.getTracer(), null, null);
         return analyzerFactory.createAnalyzer(
                 session,
                 emptyList(),
@@ -7760,7 +7760,7 @@ public class TestAnalyzer
                 .execute(clientSession, session -> {
                     Analyzer analyzer = createAnalyzer(session, accessControl);
                     Statement statement = SQL_PARSER.createStatement(query);
-                    return analyzer.analyze(statement);
+                    return analyzer.analyze(statement, query);
                 });
     }
 

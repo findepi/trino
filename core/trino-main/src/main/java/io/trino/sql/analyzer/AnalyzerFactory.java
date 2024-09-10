@@ -18,6 +18,8 @@ import io.opentelemetry.api.trace.Tracer;
 import io.trino.Session;
 import io.trino.execution.querystats.PlanOptimizersStatsCollector;
 import io.trino.execution.warnings.WarningCollector;
+import io.trino.split.PageSourceManager;
+import io.trino.split.SplitManager;
 import io.trino.sql.rewrite.StatementRewrite;
 import io.trino.sql.tree.Expression;
 import io.trino.sql.tree.NodeRef;
@@ -33,13 +35,17 @@ public class AnalyzerFactory
     private final StatementAnalyzerFactory statementAnalyzerFactory;
     private final StatementRewrite statementRewrite;
     private final Tracer tracer;
+    private final SplitManager splitManager;
+    private final PageSourceManager pageSourceManager;
 
     @Inject
-    public AnalyzerFactory(StatementAnalyzerFactory statementAnalyzerFactory, StatementRewrite statementRewrite, Tracer tracer)
+    public AnalyzerFactory(StatementAnalyzerFactory statementAnalyzerFactory, StatementRewrite statementRewrite, Tracer tracer, SplitManager splitManager, PageSourceManager pageSourceManager)
     {
         this.statementAnalyzerFactory = requireNonNull(statementAnalyzerFactory, "statementAnalyzerFactory is null");
         this.statementRewrite = requireNonNull(statementRewrite, "statementRewrite is null");
         this.tracer = requireNonNull(tracer, "tracer is null");
+        this.splitManager = splitManager;
+        this.pageSourceManager = pageSourceManager;
     }
 
     public Analyzer createAnalyzer(
@@ -58,6 +64,8 @@ public class AnalyzerFactory
                 warningCollector,
                 planOptimizersStatsCollector,
                 tracer,
-                statementRewrite);
+                statementRewrite,
+                splitManager,
+                pageSourceManager);
     }
 }

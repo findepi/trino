@@ -131,7 +131,7 @@ public final class DescribeOutputRewrite
             Statement statement = parser.createStatement(sqlString);
 
             Analyzer analyzer = analyzerFactory.createAnalyzer(session, parameters, parameterLookup, warningCollector, planOptimizersStatsCollector);
-            Analysis analysis = analyzer.analyze(statement, DESCRIBE);
+            Analysis analysis = analyzer.analyze(statement, DESCRIBE, (String)null);
 
             Optional<Node> limit = Optional.empty();
             Row[] rows = analysis.getRootScope().getRelationType().getVisibleFields().stream().map(field -> createDescribeOutputRow(field, analysis)).toArray(Row[]::new);

@@ -282,7 +282,7 @@ public class SqlQueryExecution
                 planOptimizersStatsCollector);
         Analysis analysis;
         try {
-            analysis = analyzer.analyze(preparedQuery.getStatement());
+            analysis = analyzer.analyze(preparedQuery.getStatement(), stateMachine.getBasicQueryInfo(Optional.empty()).getQuery());
         }
         catch (StackOverflowError e) {
             throw new TrinoException(STACK_OVERFLOW, "statement is too large (stack overflow during analysis)", e);

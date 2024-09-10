@@ -34,7 +34,7 @@ import static java.util.Objects.requireNonNull;
 
 public class StatementAnalyzerFactory
 {
-    private final PlannerContext plannerContext;
+    public final PlannerContext plannerContext;
     private final SqlParser sqlParser;
     private final SessionTimeProvider sessionTimeProvider;
     private final AccessControl accessControl;

@@ -127,7 +127,7 @@ public final class DescribeInputRewrite
 
             // create  analysis for the query we are describing.
             Analyzer analyzer = analyzerFactory.createAnalyzer(session, parameters, parameterLookup, warningCollector, planOptimizersStatsCollector);
-            Analysis analysis = analyzer.analyze(statement, DESCRIBE);
+            Analysis analysis = analyzer.analyze(statement, DESCRIBE, (String)null);
 
             // get all parameters in query
             List<Parameter> parameters = extractParameters(statement);

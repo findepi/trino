@@ -179,7 +179,7 @@ public class QueryExplainer
     private Analysis analyze(Session session, Statement statement, List<Expression> parameters, WarningCollector warningCollector, PlanOptimizersStatsCollector planOptimizersStatsCollector)
     {
         Analyzer analyzer = analyzerFactory.createAnalyzer(session, parameters, bindParameters(statement, parameters), warningCollector, planOptimizersStatsCollector);
-        return analyzer.analyze(statement, EXPLAIN);
+        return analyzer.analyze(statement, EXPLAIN, (String)null);
     }
 
     private SubPlan getDistributedPlan(Session session, Statement statement, List<Expression> parameters, WarningCollector warningCollector, PlanOptimizersStatsCollector planOptimizersStatsCollector)

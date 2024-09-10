@@ -115,7 +115,7 @@ public class CreateMaterializedViewTask
         String sql = getFormattedSql(statement.getQuery(), sqlParser);
 
         Analysis analysis = analyzerFactory.createAnalyzer(session, parameters, parameterLookup, warningCollector, planOptimizersStatsCollector)
-                .analyze(statement);
+                .analyze(statement, (String)null);
 
         List<ViewColumn> columns = analysis.getOutputDescriptor(statement.getQuery())
                 .getVisibleFields().stream()

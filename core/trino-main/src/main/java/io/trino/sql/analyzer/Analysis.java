@@ -209,7 +209,7 @@ public class Analysis
     private final Map<NodeRef<Node>, SubqueryAnalysis> subqueries = new LinkedHashMap<>();
     private final Map<NodeRef<Expression>, PredicateCoercions> predicateCoercions = new LinkedHashMap<>();
 
-    private final Map<NodeRef<Table>, TableEntry> tables = new LinkedHashMap<>();
+    public final Map<NodeRef<Table>, TableEntry> tables = new LinkedHashMap<>();
 
     private final Map<NodeRef<Expression>, Type> types = new LinkedHashMap<>();
     private final Map<NodeRef<Expression>, Type> coercions = new LinkedHashMap<>();
@@ -2063,7 +2063,7 @@ public class Analysis
         }
     }
 
-    private static class TableEntry
+    public static class TableEntry
     {
         private final Optional<TableHandle> handle;
         private final QualifiedObjectName name;

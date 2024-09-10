@@ -76,7 +76,9 @@ public class TestCreateViewTask
                         new TablePropertyManager(CatalogServiceProvider.fail()),
                         new AnalyzePropertyManager(CatalogServiceProvider.fail())),
                 new StatementRewrite(ImmutableSet.of()),
-                plannerContext.getTracer());
+                plannerContext.getTracer(),
+                null,
+                null);
         QualifiedObjectName tableName = qualifiedObjectName("mock_table");
         metadata.createTable(testSession, CATALOG_NAME, someTable(tableName), FAIL);
     }
