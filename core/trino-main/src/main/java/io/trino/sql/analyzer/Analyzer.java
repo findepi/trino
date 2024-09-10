@@ -193,19 +193,13 @@ public class Analyzer
                     return;
                 }
                 System.out.println("Dumping data from %s".formatted(tableName));
-                Optional<List<List<String>>> dump = dumpTableData(tableHandle.get());
+                Optional<TableState> dump = dumpTableData(tableEntry.getName(), tableHandle.get());
                 if (dump.isEmpty()) {
                     // e.g. too big
                     System.out.println("E.g. data too big or something, not capturing query state");
                     return;
                 }
-                tableStates.add(
-                        new TableState(
-                                tableName,
-                                dump.get()
-                                        .stream()
-                                        .sorted(Ordering.natural().lexicographical())
-                                        .toList()));
+                tableStates.add(dump.get());
             }
 
             String tableStatesJson = TABLE_STATES_CODEC.toJson(tableStates);
@@ -253,9 +247,11 @@ public class Analyzer
     static JsonCodec<Map<String, String>> MAP_CODEC = io.airlift.json.JsonCodec.mapJsonCodec(String.class, String.class);
     static JsonCodec<List<TableState>> TABLE_STATES_CODEC = io.airlift.json.JsonCodec.listJsonCodec(TableState.class);
 
-    public record TableState(QualifiedObjectName tableName, List<List<String>> tableData) {}
+    public record TableState(QualifiedObjectName tableName, List<ColumnInfo> columns, List<List<String>> data) {}
 
-    Optional<List<List<String>>> dumpTableData(TableHandle tableHandle)
+    public record ColumnInfo(String name, String type) {}
+
+    Optional<TableState> dumpTableData(QualifiedObjectName tableName, TableHandle tableHandle)
     {
         if (splitManager == null || pageSourceManager == null) {
             // not wired in
@@ -271,13 +267,16 @@ public class Analyzer
         List<String> columnNames = new ArrayList<>();
         List<Type> types = new ArrayList<>();
         List<ColumnHandle> columnHandles = new ArrayList<>();
+        List<ColumnInfo> columnInfos = new ArrayList<>();
         metadata.getColumnHandles(session, tableHandle).forEach((name, columnHandle) -> {
             if (metadata.getColumnMetadata(session, tableHandle, columnHandle).isHidden()) {
                 return;
             }
             columnNames.add(name);
-            types.add(tableSchema.column(name).getType());
+            Type type = tableSchema.column(name).getType();
+            types.add(type);
             columnHandles.add(columnHandle);
+            columnInfos.add(new ColumnInfo(name, type.getDisplayName()));
         });
 
         String columnNamesString = columnNames.stream()
@@ -332,7 +331,17 @@ public class Analyzer
             throw new RuntimeException(e);
         }
 
-        return Optional.of(rows.build());
+        List<List<String>> rowsList = rows.build();
+        return Optional.of(
+                new TableState(
+                        tableName,
+                        columnInfos,
+                        rowsList
+                                .stream()
+                                // normalize
+                                .sorted(Ordering.natural().lexicographical())
+                                .toList())
+        );
     }
 
     Function<Object, String> literalizer(Type type)
