@@ -67,5 +67,6 @@ final class DriverInfo
         }
     }
 
+    // test-ci-smart-prev-run-skip: push 1 marker (module A: client/trino-jdbc)
     private DriverInfo() {}
 }
