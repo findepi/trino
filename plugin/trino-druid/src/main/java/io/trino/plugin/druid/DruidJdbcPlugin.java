@@ -18,6 +18,7 @@ import io.trino.plugin.jdbc.JdbcPlugin;
 public class DruidJdbcPlugin
         extends JdbcPlugin
 {
+    // test-ci-smart-prev-run-skip: push 2 marker (module B: plugin/trino-druid)
     public DruidJdbcPlugin()
     {
         super("druid", DruidJdbcClientModule::new);
